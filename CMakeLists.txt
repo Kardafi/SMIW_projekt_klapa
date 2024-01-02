@@ -4,3 +4,10 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(final_pwm)
 
 target_sources(app PRIVATE src/main.c)
+
+# Custom files and folders
+target_sources(app PRIVATE
+    src/custom_files/serwo_control.c;
+    src/custom_files/remote.c
+)
+zephyr_library_include_directories(src/custom_files)

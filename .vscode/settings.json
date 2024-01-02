@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "log.h": "c",
+        "hci.h": "c",
+        "uuid.h": "c",
+        "bluetooth.h": "c",
+        "dk_buttons_and_leds.h": "c"
+    }
+}
