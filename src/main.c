@@ -124,10 +124,11 @@ int leds_usb_button_init(){
 	if (usb_enable(NULL)) {
         return -1;
 	}
-	while (!dtr) {
+	//bez while bo bedziemy czekac w nieskonczonosc jezeli nie wlaczymy serial monitora
+	//while (!dtr) {
         uart_line_ctrl_get(dev, UART_LINE_CTRL_DTR, &dtr);
-        k_sleep(K_MSEC(100));
-	}
+        k_sleep(K_MSEC(1000));
+	//}
 	printk("Sterownik klapy. Inicjalizacja...\n");
 
 	//LED BLUETOOTH
