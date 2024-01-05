@@ -1,7 +1,8 @@
 #include "remote.h"
 
 static K_SEM_DEFINE(bt_init_ok, 0, 1);
-static uint16_t pwm_value = 0;
+static uint8_t pwm_value = 0;
+static uint16_t battery_value = 0;
 static struct bt_remote_service_cb remote_service_callbacks;
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
@@ -18,21 +19,26 @@ static const struct bt_data sd[] = {
 
 /* Declarations */
 static ssize_t read_pwm_characteristic_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset);
+static ssize_t read_battery_characteristic_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset);
 void pwm_chrc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
 static ssize_t on_write(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset, uint8_t flags);
 
 
 BT_GATT_SERVICE_DEFINE(remote_srv,
 BT_GATT_PRIMARY_SERVICE(BT_UUID_REMOTE_SERVICE),
-    BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_PWM_CHRC,
+    BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_PWM_NOTIFY_CHRC,
                     BT_GATT_CHRC_READ | BT_GATT_CHRC_NOTIFY,
                     BT_GATT_PERM_READ,
-                    read_pwm_characteristic_cb, NULL, NULL),
+                    read_pwm_characteristic_cb, NULL, &pwm_value),
     BT_GATT_CCC(pwm_chrc_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
-    BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_MESSAGE_CHRC,
+    BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_PWM_WRITE_CHRC,
                     BT_GATT_CHRC_WRITE_WITHOUT_RESP,
                     BT_GATT_PERM_WRITE,
                     NULL, on_write, NULL),
+     BT_GATT_CHARACTERISTIC(BT_UUID_REMOTE_BATTERY_CHRC,
+                    BT_GATT_CHRC_READ,
+                    BT_GATT_PERM_READ,
+                    read_battery_characteristic_cb, NULL, &battery_value),
 );
 
 /* Callbacks */
@@ -68,10 +74,18 @@ void pwm_chrc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 }
 
 static ssize_t read_pwm_characteristic_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
-			 void *buf, uint16_t len, uint16_t offset)
+			 void *buf, uint16_t len, uint16_t offset)       
 {
+    printk("Odczytano wartosc char. pwm:%"PRIu8,pwm_value);
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, &pwm_value,
 				 sizeof(pwm_value));
+}
+static ssize_t read_battery_characteristic_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+			 void *buf, uint16_t len, uint16_t offset)
+{
+    printk("Odczytano wartosc char. batrii:%"PRIu16,battery_value);
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, &battery_value,
+				 sizeof(battery_value));
 }
 
 void bluetooth_ready_callback(int err)
@@ -85,7 +99,7 @@ void bluetooth_ready_callback(int err)
 
 /* Remote service functions */
 
-int send_pwm_notification(struct bt_conn *conn, uint16_t value)
+int send_pwm_notification(struct bt_conn *conn, uint8_t value)
 {
     int err = 0;
 
@@ -94,18 +108,21 @@ int send_pwm_notification(struct bt_conn *conn, uint16_t value)
 
     params.attr = attr;
     params.data = &value;
-    params.len = 2;
-    params.func = NULL;//on_sent;
-
-    err= bt_gatt_notify(conn,attr,&value,sizeof(value));
-    //err = bt_gatt_notify_cb(conn, &params);
+    params.len = 1;
+    params.func = on_sent;
+    //err= bt_gatt_notify(conn,attr,&value,sizeof(value));
+    err = bt_gatt_notify_cb(conn, &params);
 
     return err;
 }
 
-void set_pwm_value(uint16_t _pwm_value)
+void set_pwm_value(uint8_t _pwm_value)
 {
     pwm_value = _pwm_value;
+}
+void set_battery_value(uint16_t _battery_value)
+{
+    battery_value = _battery_value;
 }
 
 int bluetooth_init(struct bt_conn_cb * bt_cb, struct bt_remote_service_cb * remote_cb)

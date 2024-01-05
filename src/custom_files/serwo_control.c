@@ -18,10 +18,12 @@ int serwo_init(){
         return err; //jak 0 to dobrze
 }
 
-int set_serwo_angle(uint32_t duty_cycle_ns)
+int set_serwo_angle(uint32_t _serwo_angle)
 {
     int err=0;
-
+    uint32_t duty_cycle_ns = (uint32_t)(((double)_serwo_angle / 180.0) * 1000000.0)+1000000;
+     printk("SERWO duty_cycle_ns: %"PRIu32"\n", duty_cycle_ns);
+    //uint32_t duty_cycle_ns = ((double)_serwo_angle / 180) * 4294967295;
     if (duty_cycle_ns > MAX_DUTY_CYCLE) //jezeli za duzo to obcinamy do max wartosci
     duty_cycle_ns=MAX_DUTY_CYCLE;
     else if (duty_cycle_ns < MIN_DUTY_CYCLE) //jezeli za malo to zwiekszamy do min wartosci

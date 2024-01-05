@@ -28,15 +28,12 @@ uint32_t dtr = 0;
 /* Declarations */
 #define SLEEP_TIME_MS   10*60*1000 /*the sleep time 10 minutes  */
 
-#define MEAN_DUTY_CYCLE       1500000
-#define MAX_DUTY_CYCLE        2000000
-#define MIN_DUTY_CYCLE        1000000
-volatile int serwo_angle    = MEAN_DUTY_CYCLE;
+volatile int serwo_angle = 90;
 
 void on_connected(struct bt_conn *conn, uint8_t err);
 void on_disconnected(struct bt_conn *conn, uint8_t reason);
 void on_notif_changed(enum bt_button_notifications_enabled status);
-void on_data_received(struct bt_conn *conn, const uint16_t *const data, uint16_t len);
+void on_data_received(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
 
 static struct gpio_callback button_cb_data;
 
@@ -52,23 +49,23 @@ struct bt_remote_service_cb remote_callbacks = {
 
 /* Callbacks */
 
-void on_data_received(struct bt_conn *conn, const uint16_t *const data, uint16_t len)
+void on_data_received(struct bt_conn *conn, const uint8_t *const data, uint16_t len)
 {
-    uint16_t temp_str[len+1];
+    uint8_t temp_str[len+1];
     memcpy(temp_str, data, len);
     temp_str[len] = 0x00;
 
 	gpio_pin_toggle_dt(&led_button);
     printk("Received data on conn %p. Len: %d\n", (void *)conn, len);
-    printk("Data: %"PRIu16"\n", temp_str[0]);
+	printk("Data: %"PRIu8"\n", temp_str[0]);
 
     //mapowanie na potrzeby otrzymania wartosci uint32_t
 	//1 000 000ms/65535 = 15.2590218967
 	//uint32_t temp = (uint32_t)data[0]*16;
 
-	uint32_t temp_pwm = 1000000 + (temp_str[0]*16);
-	serwo_angle=(temp_pwm);
-	set_serwo_angle(temp_pwm);
+	serwo_angle=(temp_str[0]);
+	set_pwm_value(temp_str[0]); //dla ble
+	set_serwo_angle(temp_str[0]);
 }
 
 void on_notif_changed(enum bt_button_notifications_enabled status)
@@ -103,16 +100,16 @@ void on_disconnected(struct bt_conn *conn, uint8_t reason)
 void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     gpio_pin_toggle_dt(&led_button);
-	serwo_angle+=200000; //+0,2ms
+	serwo_angle+=20; //+0,2ms
 
-    if (serwo_angle > 2000000){
-		serwo_angle = 1000000;
+    if (serwo_angle > 180){
+		serwo_angle = 0;
 	}
         
 	printk("BUTTON pwm: %"PRIu32"\n", serwo_angle);
 
     set_serwo_angle(serwo_angle);
-	set_pwm_value(serwo_angle); //dla bluetooth
+	set_pwm_value(serwo_angle); //dla ble
 	send_pwm_notification(current_conn, serwo_angle);
 }
 
@@ -177,7 +174,10 @@ int main(void)
 	err = leds_usb_button_init();
 	err = serwo_init();
     err = bluetooth_init(&bluetooth_callbacks,&remote_callbacks);
-  
+
+	//test
+	set_battery_value(0x2233);
+
     if (err) {
         printk("Init failed (err %d)\n", err);
     }

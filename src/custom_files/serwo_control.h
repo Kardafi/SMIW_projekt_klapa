@@ -2,4 +2,4 @@
 #include <zephyr/drivers/pwm.h>
 
 int serwo_init(void);
-int set_serwo_angle(uint32_t duty_cycle_ns);
+int set_serwo_angle(uint32_t _serwo_angle);
